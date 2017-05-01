@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head> 
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no" /> 
+  <meta charset="utf-8" /> 
+  <title>基于路网的热点路径</title> 
+  <link href="bootstrap.css" rel="stylesheet" type="text/css" /> 
+  <style>
+      /* Always set the map height explicitly to define the size of the div
+      * element that contains the map. */
+      #map {
+        height: 100%;
+        width: 75%;
+        float: left;
+        position: relative;
+      }
+      #left_panel {
+        width: 25%;
+        float: left;
+        position: relative;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      a{text-decoration: none;
+        color: black
+      }
+
+
+      #title-wrapper, #step-1-wrapper, #step-2-wrapper, #step-3-wrapper{
+        padding-left: 10px;
+        padding-right: 10px;
+
+      }
+      #title , #step-1, #step-2, #step-3{
+        border-bottom:1px solid #e7e7e7;
+      }
+      #s1-title, #s2-title, #s3-title{
+        margin-top: 15px;
+      }
+      #title{
+        text-align:center;
+      }
+      h3{
+        font-size: 20px;
+      }
+      h5, h4{
+        line-height: 30px; 
+      }
+      h5, h4{
+        margin-top:0px;
+        margin-bottom:0px;
+      }
+
+      .form-control ,.btn{
+        margin-bottom: 15px;
+      }
+      #gen-btn, #base-cluster-btn, #flow-cluster-btn{
+        float: left;
+      }
+      #gen-status, #base-cluster-status, #flow-cluster-status{
+        float: left;
+        margin-top: 8px;
+        margin-left: 10px;
+      }
+      .clear{
+        clear: both;
+      }
+      #get-base-cluster-group, #get-flow-cluster-group , .describe{
+        margin-top: 7px;
+      }
+
+      
+    </style> 
+  </head> 
+  <body> 
+    <div id="left_panel"> 
+     <div id="title-wrapper"> 
+      <div id="title">
+       <h3>基于路网的热点路径分析系统</h3>
+     </div> 
+   </div> 
+   <div id="step-1-wrapper"> 
+    <div id="step-1"> 
+     <div id="s1-title">
+      <h4>第一步 生成模拟轨迹</h4>
+    </div> 
+    <div id="mo-count-label">
+      <h5>模拟移动物体数量(MOCount):</h5>
+    </div> 
+    <input id="mo-count" class="form-control" type="textbox" value="200" placeholder="输入移动物体数量" autocomplete="off" /> 
+    <div id="generate-traj-group"> 
+      <button id="gen-btn" type="button" class="btn btn-primary" onclick="generateTrajectory()">生成轨迹</button> 
+      <p id="gen-status"></p> 
+    </div> 
+    <div class="clear"></div> 
+  </div> 
+</div> 
+<div id="step-2-wrapper"> 
+  <div id="step-2"> 
+   <div id="s2-title">
+    <h4>第二步 计算生成基本轨迹簇</h4>
+  </div> 
+  <p class="describe">根据路段将轨迹聚类，获得热门路段。</p> 
+  <div id="get-base-cluster-group"> 
+    <button id="base-cluster-btn" type="button" class="btn btn-primary" onclick="getBaseCluster()">获取基本轨迹簇</button> 
+    <p id="base-cluster-status"></p> 
+  </div> 
+  <div class="clear"></div> 
+</div> 
+</div> 
+<div id="step-3-wrapper"> 
+  <div id="step-3"> 
+   <div id="s3-title">
+    <h4>第三步 计算生成热点路径</h4>
+  </div> 
+  <p class="describe">根据NEAT算法，将热门路段拼接为热点路径。</p> 
+  <div id="get-flow-cluster-group"> 
+    <button id="flow-cluster-btn" type="button" class="btn btn-primary" onclick="getFlowCluster()">获取热点路径</button> 
+    <p id="flow-cluster-status"></p> 
+  </div> 
+  <div class="clear"></div> 
+</div> 
+</div> 
+</div> 
+<div id="map"></div> 
+<script>
+  var map ;
+  function initMap() {
+    map = new google.maps.Map(document.getElementById('map'), {
+      zoom: 10,
+      center: {lat: 39.93, lng: 116.42},
+      mapTypeId: 'roadmap'
+    });
+    var styleArray = [
+    {
+      featureType: "poi",
+      stylers: [
+      { visibility: "off" }
+      ]
+    },
+        // {
+        //   featureType: "road",
+        //   stylers: [
+        //   { visibility: "on" }
+        //   ]
+        // },
+        {elementType: 'geometry', stylers: [{color: '#242f3e'}]},
+        {elementType: 'labels.text.stroke', stylers: [{color: '#242f3e'}]},
+        {elementType: 'labels.text.fill', stylers: [{color: '#746855'}]},
+        {
+          featureType: 'administrative.locality',
+          elementType: 'labels.text.fill',
+          stylers: [{color: '#d59563'}]
+        },
+        {
+          featureType: 'poi',
+          elementType: 'labels.text.fill',
+          stylers: [{color: '#d59563'}]
+        },
+        {
+          featureType: 'poi.park',
+          elementType: 'geometry',
+          stylers: [{color: '#263c3f'}]
+        },
+        {
+          featureType: 'poi.park',
+          elementType: 'labels.text.fill',
+          stylers: [{color: '#6b9a76'}]
+        },
+        {
+          featureType: 'road',
+          elementType: 'geometry',
+          stylers: [{color: '#38414e'}]
+        },
+        {
+          featureType: 'road',
+          elementType: 'geometry.stroke',
+          stylers: [{color: '#212a37'}]
+        },
+        {
+          featureType: 'road',
+          elementType: 'labels.text.fill',
+          stylers: [{color: '#9ca5b3'}]
+        },
+        {
+          featureType: 'road.highway',
+          elementType: 'geometry',
+          stylers: [{color: '#746855'}]
+        },
+        {
+          featureType: 'road.highway',
+          elementType: 'geometry.stroke',
+          stylers: [{color: '#1f2835'}]
+        },
+        {
+          featureType: 'road.highway',
+          elementType: 'labels.text.fill',
+          stylers: [{color: '#f3d19c'}]
+        },
+        {
+          featureType: 'transit',
+          elementType: 'geometry',
+          stylers: [{color: '#2f3948'}]
+        },
+        {
+          featureType: 'transit.station',
+          elementType: 'labels.text.fill',
+          stylers: [{color: '#d59563'}]
+        },
+        {
+          featureType: 'water',
+          elementType: 'geometry',
+          stylers: [{color: '#17263c'}]
+        },
+        {
+          featureType: 'water',
+          elementType: 'labels.text.fill',
+          stylers: [{color: '#515c6d'}]
+        },
+        {
+          featureType: 'water',
+          elementType: 'labels.text.stroke',
+          stylers: [{color: '#17263c'}]
+        }];
+
+        map.setOptions({styles: styleArray});
+      }
+
+      function getFlowCluster() {
+        clearMap();
+        $("#flow-cluster-status").text("正在计算...");
+        $("#flow-cluster-btn").attr('disabled', true);
+        var start = (new Date).getTime();
+        $.ajax({
+          url: "http://localhost:23333/flow_cluster",
+          type:'get',
+          success: function(data){
+            // console.log(data);
+            if (data == -1) {
+              $("#flow-cluster-status").text("请先生成模拟轨迹或基本轨迹簇！");
+              $("#flow-cluster-btn").attr('disabled', false);
+              return;
+            }
+            var end = (new Date).getTime();
+            drawTrajs(JSON.parse(data), true);
+            $("#flow-cluster-btn").attr('disabled', false);
+            $("#flow-cluster-status").text("计算结束 耗时：" + (end - start) + " ms");
+          },
+        })
+      }
+
+      function generateTrajectory() {
+        clearMap();
+        var mocount = $("#mo-count").val();
+        if(mocount===""){
+          mocount = 200;
+        }
+        $("#gen-status").text("正在生成...");
+        $("#gen-btn").attr('disabled',true); 
+        var start = (new Date).getTime();
+        $.ajax({
+          url: "http://localhost:23333/generate_trajectory?mocount=" + mocount,
+          type:'get',
+          success: function(data){
+            // console.log(data);
+            var end = (new Date).getTime();
+            drawTrajs(JSON.parse(data), true);
+            $("#gen-status").text("生成完毕 耗时：" + (end - start) + " ms");
+            $("#gen-btn").attr('disabled',false); 
+          },
+        })
+      }
+
+      function getBaseCluster() {
+        clearMap();
+        $("#base-cluster-status").text("正在计算...");
+        $("#base-cluster-btn").attr('disabled', true);
+        var start = (new Date).getTime();
+        $.ajax({
+          url: "http://localhost:23333/base_cluster",
+          type:'get',
+          success: function(data){
+            console.log(data);
+            if (data == -1) {
+              $("#base-cluster-status").text("请先生成模拟轨迹！");
+              $("#base-cluster-btn").attr('disabled', false);
+              return;
+            }
+            var end = (new Date).getTime();
+            drawTrajs(JSON.parse(data), true);
+            $("#base-cluster-status").text("计算结束 耗时：" + (end - start) + " ms");
+            $("#base-cluster-btn").attr('disabled', false);
+          },
+        })
+      }
+
+      function drawTrajs(trajs, randomColor) {
+        // var map = new google.maps.Map(document.getElementById('map'), {
+        //   zoom: 10,
+        //   center: {lat: 39.93, lng: 116.42},
+        //   mapTypeId: 'terrain'
+        // });
+
+        // for (var i = trajs.length - 1; i >= 0; i--) {
+        //   new google.maps.Marker({
+        //     position: trajs[i],
+        //     icon: {
+        //       path: google.maps.SymbolPath.CIRCLE,
+        //       scale: 1
+        //     },
+        //     draggable: false,
+        //     map: map
+        //   });
+
+        // }
+
+        for (var i = 0;i < trajs.length;i++) {
+          var trajCoords = trajs[i];
+          drawOneTraj(trajCoords, randomColor);
+        }
+
+        
+      }
+
+      function drawOneTraj(traj, randomColor) {
+        // mapMatch(traj, function(data){
+        //   snappedCoordinates = [];
+        //   for (var i = 0; i < data.snappedPoints.length; i++) {
+        //     var latlng = new google.maps.LatLng(
+        //       data.snappedPoints[i].location.latitude,
+        //       data.snappedPoints[i].location.longitude);
+        //     snappedCoordinates.push(latlng);
+        //   }
+        //   doDraw(snappedCoordinates);
+        // });
+        doDraw(traj, randomColor);
+        
+      }
+
+      function doDraw(traj, randomColor) {
+        var lineSymbol = {
+          path: 'M 0,-1 0,1',
+          strokeOpacity: 1,
+          scale: 4
+        };
+        if(randomColor) {
+          color = shadeColor2(getRandomColor(), .2);
+        } else {
+          color = "#6600cc";
+        }
+        var path = new google.maps.Polyline({
+          path: traj,
+          geodesic: true,
+          strokeColor: color,
+          strokeOpacity: 0.8,
+          strokeWeight: 2
+          // icons: [{
+          //   icon: lineSymbol,
+          //   offset: '0',
+          //   repeat: '20px'
+          // }],
+        });
+
+        path.setMap(map);
+        overlays.push(path);
+      }
+
+      var overlays = [];
+
+      function clearMap(){
+        while(overlays[0]){
+         overlays.pop().setMap(null);
+       }
+     }
+
+
+     function mapMatch(path, callback) {
+      $.ajax('https://roads.googleapis.com/v1/snapToRoads', {
+        type: "POST",
+        dataType: 'jsonp',
+        interpolate: true,
+        key: "AIzaSyC5GWnUSxwuyXRau1-6wa3wLpdBl5xwHrM",
+        path: path.join('|')
+      }, function(data) {
+        callback(data);
+      });
+    }
+
+    function shadeColor2(color, percent) {   
+      var f=parseInt(color.slice(1),16),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=f>>16,G=f>>8&0x00FF,B=f&0x0000FF;
+      return "#"+(0x1000000+(Math.round((t-R)*p)+R)*0x10000+(Math.round((t-G)*p)+G)*0x100+(Math.round((t-B)*p)+B)).toString(16).slice(1);
+    }
+
+    var getRandomColor = function(){    
+
+      return  '#' +    
+      (function(color){    
+        return (color +=  '0123456789abcdef'[Math.floor(Math.random()*16)])    
+        && (color.length == 6) ?  color : arguments.callee(color);    
+      })('');    
+    } 
+  </script> 
+  <script async="" defer="" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC5GWnUSxwuyXRau1-6wa3wLpdBl5xwHrM&amp;callback=initMap">
+  </script> 
+  <script type="text/javascript" src="http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>  
+</body>
+</html>

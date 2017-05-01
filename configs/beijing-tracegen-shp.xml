@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?><simulation endtime="35 min" starttime="0 min" warmup="2 min">
+  <world type="roadnet">
+    <file name="/Users/lusichong/Desktop/NEATHotPath/configs/maps/beijing/beijing_line.shp"/>
+  </world>
+  
+  <agents count="200">
+    <mobilitymodel destCount="3" filename="configs/traces/sim.m.trace" startCount="2" type="RandomTripRoadnet">
+      <parking mean="15 sec" stdev="5 sec" type="gaussian"/>
+      <locationdistribution type="uniformroadnet"/>
+      
+      <speeddistribution mean="10 mph" stdev="1 mph" type="gaussian"/>
+    </mobilitymodel>
+
+    <periodictraceoutput filename="configs/traces/sim.m.pos.trace" period="10 sec"/>
+
+    <!--<querymodel type="fixednumber_range" count="100" filename="configs/traces/sim.q(02mi).trace">-->
+      <!--<locationdistribution type="hotspotroadnet" count="1" coeff="0.5" seed="0"/>-->
+      <!--<radius type="gaussian" mean="2 mi" stdev="0.4 mi" />-->
+      <!--<lifetime type="gaussian" mean="4 min" stdev="0.8 min" />-->
+    <!--</querymodel>-->
+  </agents>
+</simulation>
